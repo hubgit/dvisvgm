@@ -44,7 +44,7 @@ AC_ARG_WITH([kpathsea],
 	[with_kpathsea=yes])
 
 AS_IF([test "x$with_kpathsea" != "xyes"],
-	[KPSE_CFLAGS="-I$with_kpathsea/include" KPSE_LIBS="-L$with_kpathsea/lib"]
+	[KPSE_CFLAGS="-I$with_kpathsea/include" KPSE_LIBS="-L$with_kpathsea/lib"],
 	[CPPFLAGS="$CPPFLAGS $KPSE_CFLAGS" CFLAGS="$CFLAGS $KPSE_CFLAGS" LDFLAGS="$LDFLAGS $KPSE_LIBS"])
 
 AC_CHECK_HEADER([kpathsea/kpathsea.h],,

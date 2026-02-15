@@ -110,7 +110,10 @@ const char* FileFinder::findFile (const std::string &fname, const char *ftype) c
 
 	// try to lookup the file in the additionally specified directories
 	for (const std::string &dir : _additionalDirs) {
-		_pathbuf = dir+"/"+fname;
+		_pathbuf = dir;
+		if (_pathbuf.back() != '/')
+			_pathbuf += "/";
+		_pathbuf += fname;
 		if (FileSystem::exists(_pathbuf))
 			return _pathbuf.c_str();
 	}

@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>dvisvgm WebAssembly</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            max-width: 800px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+            line-height: 1.5;
+        }
+        .container {
+            border: 1px solid #ddd;
+            padding: 1.5rem;
+            border-radius: 8px;
+            background: #f9f9f9;
+        }
+        .section {
+            margin-bottom: 1.5rem;
+        }
+        label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 0.6rem 1.2rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+        button:disabled {
+            background-color: #ccc;
+        }
+        #output {
+            margin-top: 2rem;
+            border: 1px solid #ccc;
+            padding: 1rem;
+            min-height: 100px;
+            background: white;
+            overflow: auto;
+        }
+        pre {
+            background: #eee;
+            padding: 0.5rem;
+            font-size: 0.8rem;
+            max-height: 200px;
+            overflow: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>dvisvgm WebAssembly</h1>
+    <div class="container">
+        <div class="section">
+            <label for="dviFile">Select DVI file:</label>
+            <input type="file" id="dviFile" accept=".dvi">
+        </div>
+        <div class="section">
+            <label for="fontFiles">Select Font files (TFM, PFB, etc. - Optional):</label>
+            <input type="file" id="fontFiles" multiple>
+            <small>Note: dvisvgm needs font files to render text correctly.</small>
+        </div>
+        <div class="section">
+            <button id="convertBtn">Convert to SVG</button>
+        </div>
+        <div class="section">
+            <label>Log Output:</label>
+            <pre id="log"></pre>
+        </div>
+    </div>
+
+    <h2>Result:</h2>
+    <div id="output"></div>
+
+    <script type="module">
+        import createDvisvgm from './dvisvgm.js';
+
+        const dviFileInput = document.getElementById('dviFile');
+        const fontFilesInput = document.getElementById('fontFiles');
+        const convertBtn = document.getElementById('convertBtn');
+        const logPre = document.getElementById('log');
+        const outputDiv = document.getElementById('output');
+
+        function log(msg) {
+            logPre.textContent += msg + '\n';
+            logPre.scrollTop = logPre.scrollHeight;
+        }
+
+        convertBtn.addEventListener('click', async () => {
+            if (!dviFileInput.files.length) {
+                alert('Please select a DVI file.');
+                return;
+            }
+
+            logPre.textContent = '';
+            outputDiv.innerHTML = '';
+            convertBtn.disabled = true;
+
+            try {
+                log('Initializing dvisvgm module...');
+                const Module = await createDvisvgm({
+                    print: (text) => log(text),
+                    printErr: (text) => log('ERR: ' + text),
+                });
+
+                const dviFile = dviFileInput.files[0];
+                const dviData = new Uint8Array(await dviFile.arrayBuffer());
+                Module.FS.writeFile('input.dvi', dviData);
+                log(`Uploaded ${dviFile.name} (${dviData.length} bytes)`);
+
+                for (const file of fontFilesInput.files) {
+                    const data = new Uint8Array(await file.arrayBuffer());
+                    Module.FS.writeFile(file.name, data);
+                    log(`Uploaded font ${file.name} (${data.length} bytes)`);
+                }
+
+                log('Running dvisvgm...');
+                // -n: no-fonts (don't try to use system fonts, we only have what's in FS)
+                // -v3: verbose
+                Module.callMain(['-n', 'input.dvi', '-o', 'output.svg']);
+
+                if (Module.FS.analyzePath('output.svg').exists) {
+                    const svgContent = Module.FS.readFile('output.svg', { encoding: 'utf8' });
+                    outputDiv.innerHTML = svgContent;
+                    log('Conversion successful!');
+                } else {
+                    log('Error: output.svg was not generated.');
+                }
+            } catch (e) {
+                log('Exception: ' + e);
+                console.error(e);
+            } finally {
+                convertBtn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>

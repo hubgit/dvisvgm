@@ -1,0 +1,8 @@
+{
+  "name": "dvisvgm-wasm",
+  "version": "1.0.0",
+  "description": "dvisvgm compiled to WebAssembly",
+  "scripts": {
+    "start": "npx serve ."
+  }
+}
